@@ -1,5 +1,7 @@
 #lang racket
 
+(provide read-dict sorted-list-contains?)
+
 ; Remove special chars from a word and make all lower case.
 (define (clean-word w)
   (string-downcase w)
@@ -8,15 +10,18 @@
 
 ; Given a file path f containing words, read it into a list.
 (define (read-dict f)
-  (map
-    (lambda (word)
-      (clean-word word)
-    )
-    (call-with-input-file f
-      (lambda (port)
-        (port->lines port)
+  (sort
+    (map
+      (lambda (word)
+        (clean-word word)
+      )
+      (call-with-input-file f
+        (lambda (port)
+          (port->lines port)
+        )
       )
     )
+    string<?
   )
 )
 
@@ -24,28 +29,42 @@
 (define (sorted-list-contains? l e)
   (let
     (
-     [len (length l)]
-     [mid (/ (length l) 2)]
+     [pivot-index (quotient (length l) 2)]
+     [pivot-val (list-ref l (quotient (length l) 2))]
     )
     (cond
-      [(eq? len 1) (string=? e (first l))]
-      [(string<? )]
+      [(string=? pivot-val e) #t]
+      [(eq? (length l) 1) #f]
+      [(string<? pivot-val e) (sorted-list-contains? (list-tail l pivot-index) e)]
+      [(string>? pivot-val e) (sorted-list-contains? (take l pivot-index) e)]
     )
   )
 )
 
 ; Returns #t if w is a word that always remains a valid word if you remove a
-; letter from the start/end.
-(define (is-reducible-word? w)
-  (#t)
+; letter from the start/end given dictionary l.
+(define (is-reducible-word? w l)
+  (and
+    (sorted-list-contains? l w)
+    (if
+      (eq? (string-length w) 1) #t
+      (or
+        (is-reducible-word? (substring w 0 (- (string-length w) 1)) l)
+        (is-reducible-word? (substring w 1) l)
+      )
+    )
+  )
 )
 
 ; Given a sorted list l, return all reducible words.
 (define (get-reducible-words l)
-  (#t)
+  (filter
+    (lambda (w) (is-reducible-word? w l))
+    l
+  )
 )
 
-(read-dict "small_dict.txt")
+(get-reducible-words (read-dict "small_dict.txt"))
 ; Returns the subset of l that op evaluates to true for when applied to pivot.
 ;  (define (partition-list l pivot op)
 ;    (filter (lambda (x) (op x pivot)) l)
